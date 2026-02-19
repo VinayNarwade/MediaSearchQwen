@@ -1,6 +1,6 @@
 from utils.base import *
 from utils.licence import check_licence_validation
-from languagebind_utils import get_languagebind_image_model, get_image_embedding, get_audio_embedding, get_languagebind_audio_model, get_text_embedding, get_languagebind_model
+# from languagebind_utils import get_languagebind_image_model, get_image_embedding, get_audio_embedding, get_languagebind_audio_model, get_text_embedding, get_languagebind_model
 from embedding_utils import get_embedding_model, get_image_embedding, get_text_embedding, get_text_embedding_batch
 from config import get_config
 import io
@@ -43,7 +43,7 @@ def fetch_images_from_results(results, num_frames=8):
     for result in results:
         metadata = result.get('metadata', {})
         video_path_relative = metadata.get('video_path_relative', '')
-        video_path = os.path.join(WORKING_DIR, video_path_relative)
+        video_path = os.path.join(config.WORKING_DIR, video_path_relative)
         start_frame = metadata.get('start_frame', 0)
         end_frame = metadata.get('end_frame', 0)
         #choose 8 frames between start and end frame
@@ -99,7 +99,9 @@ def get_indices_distances(index, query_embedding_np, k, sourceIds, db_manager, d
                 distances, local_indices = temp_index.search(query_embedding_np, k)
                 indices = [faiss_ids_array[local_indices[0]]]
             else:
-                distances, indices = index.search(query_embedding_np, k)
+                # distances, indices = index.search(query_embedding_np, k)
+                distances = np.array([], dtype=np.float32)
+                indices = np.array([], dtype='int64')
         except Exception as e:
             distances, indices = index.search(query_embedding_np, k)
     else:
@@ -115,7 +117,7 @@ def search_api(query, threshold, startIndex, limit, rerank, dbName, sourceIds=No
     """
     global prevQuery, prevDbName, prevSourceIds, prevIndexType
     start_time = time.time()
-
+    n_images = 4
     if startIndex < 1:
         startIndex = 1
     if limit <= 0:
@@ -197,7 +199,7 @@ def search_api(query, threshold, startIndex, limit, rerank, dbName, sourceIds=No
     if query_embedding is None:
         return {'error': 'Failed to generate query embedding'}, 500
 
-    query_embedding_np = query_embedding.cpu().numpy()
+    query_embedding_np = query_embedding.to(torch.float32).cpu().numpy()
     faiss.normalize_L2(query_embedding_np)
 
     results = []
@@ -393,7 +395,7 @@ def imagesearch_api(image_path,text, threshold, startIndex, limit, dbName, sourc
                     return {'error': 'Failed to generate query embedding'}, 500
             except Exception as e:
                 return {'error': f'Error generating query embedding: {str(e)}'}, 500
-            query_embedding_np = query_embedding.cpu().numpy()
+            query_embedding_np = query_embedding.to(torch.float32).cpu().numpy()
             faiss.normalize_L2(query_embedding_np)
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             db_manager = get_db_manager()

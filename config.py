@@ -73,6 +73,8 @@ class AppConfig:
         self.prevResults = None
         self.prevImageResults = None
         self.prevAudioResults = None
+        self.embedding_dimension = 4096
+
     
     def initialize_config(self, app):
         """
@@ -80,7 +82,7 @@ class AppConfig:
         Args:
             app: Flask application instance
         """
-        self.BATCH_SIZE = app.config.get('BATCH_SIZE', 32)
+        self.BATCH_SIZE = app.config.get('BATCH_SIZE', 4)
         self.WORKING_DIR = app.config.get('WORKING_DIR', 'work_dir')
         os.makedirs(self.WORKING_DIR, exist_ok=True)
         self.OUTPUT_DIR = os.path.join(self.WORKING_DIR, "database")

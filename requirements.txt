@@ -13,11 +13,11 @@ scenedetect>=0.6.1
 
 # AI/ML
 numpy>=1.21.2
-transformers>=4.27.4
+transformers>=4.57.3
 
 # Visualization and Utils
 matplotlib>=3.4.3
-tqdm>=4.62.2 
+tqdm>=4.67.3
 
 decord==0.6.0
 ftfy==6.1.1

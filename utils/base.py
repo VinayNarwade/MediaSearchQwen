@@ -25,7 +25,7 @@ app = Flask(__name__)
 # Get the global configuration instance
 config = get_config()
 
-def load_index(index_path, embedding_dim=768):  #used in index and remove
+def load_index(index_path, embedding_dim=config.embedding_dimension):  #used in index and remove
     """Helper function to load an index from a file"""
     if os.path.exists(index_path):
         try:

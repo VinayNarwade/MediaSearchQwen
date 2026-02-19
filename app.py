@@ -6,7 +6,7 @@ from flask import Flask, jsonify, request
 import argparse
 from utils.base import initialize_config, initialize_db_config
 from utils.index import index_videos
-from utils.search import search_api, imagesearch_api, audiosearch_api
+from utils.search import search_api, imagesearch_api
 from utils.status import get_status
 from utils.licence import check_licence_validation, create_licence_requirement, get_remaining_credit
 from utils.remove import remove_video
@@ -22,12 +22,12 @@ def parse_directories():
     parser.add_argument("-w", "--working_dir", dest="working_dir", default="work_dir",
                         help=f"Path to the working directory (default: work_dir)")
     
-    parser.add_argument("-b", "--batch_size",type=int, dest="batch_size", default=8,
-                        help=f"Batch size for indexation (default: 8)")
+    parser.add_argument("-b", "--batch_size",type=int, dest="batch_size", default=6,
+                        help=f"Batch size for indexation (default: 6)")
 
-    parser.add_argument("-p", "--port", type=int, dest="port", default=5800,
-                        help="Port to run the Flask app on (default: 5800)")
-    
+    parser.add_argument("-p", "--port", type=int, dest="port", default=5801,
+                        help="Port to run the Flask app on (default: 5801)")
+
     parser.add_argument("-db", "--database_url", type=str, dest="database_url", required=True,
                         help="Database connection URL")
     args = parser.parse_args()
@@ -106,10 +106,11 @@ def textsearch():
     start_index = data.get("startIndex")
     sort_by = data.get("sortBy", "relevance")
     limit = data.get("limit", 20)
+    rerank = data.get("rerank", False)
     db_name = data.get("dbName", "*")
     source_ids = data.get("sourceIds", None)
     index_type = data.get("indexType", "video")
-    search_res, status_code = search_api(query, 0, start_index, limit, db_name, source_ids, index_type)
+    search_res, status_code = search_api(query, 0, start_index, limit, rerank, db_name, source_ids, index_type)
     return jsonify(search_res), status_code
 
 @app.route('/imagesearch', methods=['POST'])
@@ -125,17 +126,17 @@ def imagesearch():
     search_res, status_code = imagesearch_api(image_path,text, 0, start_index, limit, db_name, source_ids)
     return jsonify(search_res), status_code
 
-@app.route('/audiosearch', methods=['POST'])
-def audiosearch():
-    data = request.get_json()
-    audio_path = data.get("audio_path")
-    start_index = data.get("startIndex")
-    sort_by = data.get("sortBy", "relevance")
-    limit = data.get("limit", 20)
-    db_name = data.get("dbName", "*")
-    source_ids = data.get("sourceIds", None)
-    search_res, status_code = audiosearch_api(audio_path, 0, start_index, limit, db_name, source_ids)
-    return jsonify(search_res), status_code
+# @app.route('/audiosearch', methods=['POST'])
+# def audiosearch():
+#     data = request.get_json()
+#     audio_path = data.get("audio_path")
+#     start_index = data.get("startIndex")
+#     sort_by = data.get("sortBy", "relevance")
+#     limit = data.get("limit", 20)
+#     db_name = data.get("dbName", "*")
+#     source_ids = data.get("sourceIds", None)
+#     search_res, status_code = audiosearch_api(audio_path, 0, start_index, limit, db_name, source_ids)
+#     return jsonify(search_res), status_code
 
 @app.route('/stream-embeddings', methods=['POST'])
 def stream_embeddings_rest():

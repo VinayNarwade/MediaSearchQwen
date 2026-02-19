@@ -131,6 +131,62 @@ def detect_scenes(video_path, source_id, threshold, is_video=True, video_fps=30,
             scene_manager.detect_scenes(video)
             scene_list = scene_manager.get_scene_list()
             
+            optimal_scenes = []
+            for start_tc, end_tc in scene_list:
+                start_frame = start_tc.get_frames()
+                end_frame = end_tc.get_frames()
+                if end_frame - start_frame <= frame_rate * 6:
+                    optimal_scenes.append((start_tc, end_tc))
+                else:
+                    num_subscenes = math.ceil((end_frame - start_frame) / (frame_rate * 6))
+                    frame_numbers = np.linspace(start_frame, end_frame, num_subscenes + 1)
+                    # print("Dividing long scene from", start_frame, "to", end_frame, "into", num_subscenes, "subscenes")
+                    frame_numbers.sort()
+                    # print("frame_numbers for subscenes:", frame_numbers)
+                    # print(len(frame_numbers))
+                    sub_start_frame = start_frame
+                    for frame in frame_numbers[1:]:
+                        if frame > sub_start_frame and frame < end_frame:
+                            sub_start_tc = FrameTimecode(int(sub_start_frame), frame_rate)
+                            sub_end_tc = FrameTimecode(int(frame), frame_rate)
+                            optimal_scenes.append((sub_start_tc, sub_end_tc))
+                            # print("  Sub-scene from", sub_start_frame, "to", frame, "duration (s):", (frame - sub_start_frame)/frame_rate)
+                            sub_start_frame = frame
+                    if sub_start_frame < end_frame:
+                        # print("  Final Sub-scene from", sub_start_frame, "to", end_frame, "duration (s):", (end_frame - sub_start_frame)/frame_rate)
+                        sub_start_tc = FrameTimecode(int(sub_start_frame), frame_rate)
+                        sub_end_tc = FrameTimecode(int(end_frame), frame_rate)
+                        optimal_scenes.append((sub_start_tc, sub_end_tc))
+            # for start_tc, end_tc in optimal_scenes:
+            #     print("Optimal scene:", start_tc.get_frames(), end_tc.get_frames(), "Duration (s):", (end_tc.get_frames() - start_tc.get_frames())/frame_rate)
+            #create final_scenes by merging short scenes, each scene must be less than 6 sec after merging 
+            final_scenes = []
+            target_frames = frame_rate * 6
+            current_start = None
+            current_end = None
+            for start_tc, end_tc in optimal_scenes:
+                start_frame = start_tc.get_frames()
+                end_frame = end_tc.get_frames()
+                if current_start is None:
+                    current_start = start_frame
+                    current_end = end_frame
+                else:
+                    current_duration = current_end - current_start 
+                    scene_duration = end_frame - start_frame #
+                    # If adding this scene would exceed 6 seconds, save current and start new 
+                    if current_duration + scene_duration > target_frames: 
+                        final_scenes.append(( FrameTimecode(current_start, frame_rate), FrameTimecode(current_end, frame_rate) )) 
+                        current_start = start_frame
+                        current_end = end_frame 
+                    else: 
+                        # Merge with current scene 
+                        current_end = end_frame
+                    
+                
+            if current_start is not None and current_end is not None:
+                final_scenes.append((FrameTimecode(current_start, frame_rate), FrameTimecode(current_end, frame_rate)))
+            
+            scene_list = final_scenes
 
             if not scene_list or len(scene_list) == 0:
                 scene_list = []
@@ -216,7 +272,25 @@ def sample_frames(video_path, source_id, start_sec, end_sec, num_frames, fps, is
         frame_indices = np.linspace(start_frame, end_frame, num=num_frames, dtype=int)
         
         frames = vidReader.get_batch(frame_indices).asnumpy()
-        return frames
+
+        # print("type of frames:", type(frames))
+        # print("shape of frames:", frames.shape)
+        MAX_IMG_DIM = 480
+        resized_frames = []
+        for np_frame in frames:
+            height, width = np_frame.shape[0], np_frame.shape[1]
+            
+            if width > height:
+                new_width = MAX_IMG_DIM
+                new_height = int((MAX_IMG_DIM / width) * height)
+            else:
+                new_height = MAX_IMG_DIM
+                new_width = int((MAX_IMG_DIM / height) * width)
+            
+            resized_frame = Image.fromarray(np_frame).resize((new_width, new_height), Image.Resampling.LANCZOS)
+            resized_frames.append(resized_frame)
+        # print("Number of resized frames:", len(resized_frames), "shape:", resized_frames[0].size if resized_frames else "N/A")
+        return resized_frames
     else:
         if not os.path.isdir(video_path):
             print(f"Error: {video_path} is not a directory")
@@ -237,7 +311,7 @@ def sample_frames(video_path, source_id, start_sec, end_sec, num_frames, fps, is
             
         frame_indices = np.linspace(start_frame, end_frame, num=num_frames, dtype=int)
         
-        frames = []
+        resized_frames = []
         for idx in frame_indices:
             idx = int(idx)
             if idx >= len(image_files):
@@ -247,10 +321,20 @@ def sample_frames(video_path, source_id, start_sec, end_sec, num_frames, fps, is
             frame = cv2.imread(img_path)
             if frame is None:
                 continue
+
+            #resize 
+            width, height = frame.shape[1], frame.shape[0]
+            if width > height:
+                new_width = MAX_IMG_DIM
+                new_height = int((MAX_IMG_DIM / width) * height)
+            else:
+                new_height = MAX_IMG_DIM
+                new_width = int((MAX_IMG_DIM / height) * width)
+            frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).resize((new_width, new_height), Image.Resampling.LANCZOS)
                 
-            frames.append(frame)
+            resized_frames.append(frame)
             
-        return frames
+        return resized_frames
 
 def preprocess_frames_for_batch(frames):
     if not len(frames):
@@ -297,16 +381,16 @@ def process_embedding_batch_faiss(clip_tensor_batch, clip_metadata_batch, index,
         return
 
     try:
-        clip_tensor_batch = torch.cat(clip_tensor_batch, dim=0)
+        # clip_tensor_batch = torch.cat(clip_tensor_batch, dim=0)
 
         video_embedding = get_video_embedding(clip_tensor_batch, config.FRAMES_PER_CLIP_FOR_EMBEDDING)
-        
-        embeddings_np = video_embedding.cpu().numpy()
+        embeddings_np = video_embedding.to(torch.float32).cpu().numpy()
         current_idx = index.ntotal
 
         faiss.normalize_L2(embeddings_np)
         ids = np.arange(current_idx, current_idx + len(embeddings_np), dtype='int64')
         index.add_with_ids(embeddings_np, ids)
+
         db_manager = get_db_manager()
         for i, metadata in enumerate(clip_metadata_batch):
             metadata['faiss_id'] = current_idx + i
@@ -398,15 +482,15 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
     # total_duration = get_media_duration(video_path, is_video)
     audio_chunks, total_duration = extract_audio_chunks(video_path, chunk_duration, is_video=is_video)
     print(f"Extracted {len(audio_chunks)} audio chunks from {video_path} (total duration: {total_duration:.2f}s)")
-    AUDIO_BATCH_SIZE = config.BATCH_SIZE * 4  # You can adjust this as needed
+    AUDIO_BATCH_SIZE = config.BATCH_SIZE   # You can adjust this as needed
 
     index_files = get_index_files(db_name)
-    embedding_dim = 768
+    embedding_dim = config.embedding_dimension
 
     # Get database manager for metadata storage
     db_manager = get_db_manager()
 
-    text_model = whisper.load_model("turbo", download_root="cache_dir/whisper")
+    text_model = whisper.load_model("turbo", download_root="checkpoints/whisper")
     text_index = load_index(index_files['text'])
     # print(f"Loaded text index with {text_index.ntotal} entries")
     if text_index is None:
@@ -515,7 +599,7 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
             
                 
             start_chunk = buffer_start_chunk_index if uses_buffer[sent_num] else i
-            start_time = max(0, (start_chunk * chunk_duration + time_stamps[sent_num][0] if not uses_buffer[sent_num] else buffer_start_time) - 3)
+            start_time = max(0, (start_chunk * chunk_duration + time_stamps[sent_num][0] if not uses_buffer[sent_num] else buffer_start_time))
             end_time = start_chunk * chunk_duration + time_stamps[sent_num][1] if not uses_buffer[sent_num] else min( i * chunk_duration + time_stamps[0][1], total_duration)
 
             curr_meta = {
@@ -528,8 +612,8 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
                 "video_path_relative": os.path.relpath(video_path, os.path.dirname(config.OUTPUT_DIR)),
                 "embedding_filename": f"{db_name}_{source_id}_chunk_{i:04d}_{sent_num:04d}.txt",
                 "total_scenes": len(audio_chunks),
-                "start_frame": start_time * video_fps,
-                "end_frame": end_time * video_fps,
+                "start_frame": round(start_time * video_fps),
+                "end_frame": round(end_time * video_fps),
                 "start_time_sec": start_time,  # Each chunk is 10 seconds, so start time is chunk index * 10
                 "end_time_sec": end_time,  # Use actual duration for last chunk
                 "text": sent,
@@ -548,8 +632,8 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
             
         # Batchwise indexing
         if len(text_clip_tensor_batch) >= AUDIO_BATCH_SIZE:
-            text_embeddings = get_text_embedding_batch(text_clip_tensor_batch, device, AUDIO_BATCH_SIZE)
-            text_embeddings_np = text_embeddings.cpu().numpy() if text_embeddings is not None else None
+            text_embeddings = get_text_embedding_batch(text_clip_tensor_batch)
+            text_embeddings_np = text_embeddings.to(torch.float32).cpu().numpy() if text_embeddings is not None else None
             # print("Text embeddings shape:", text_embeddings_np.shape)
             faiss.normalize_L2(text_embeddings_np)
             current_idx = text_index.ntotal
@@ -578,7 +662,7 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
     if text_buffer.strip():
         final_sent = text_buffer.strip()
         text_clip_tensor_batch.append(final_sent)
-        start_time = max(0, buffer_start_time - 3, (len(audio_chunks) -1) * chunk_duration - 3)
+        start_time = max(0, buffer_start_time, (len(audio_chunks) -1) * chunk_duration)
         end_time = total_duration
         curr_meta = {
             "source_id": str(source_id),
@@ -592,8 +676,8 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
             "total_scenes": len(audio_chunks),
             "start_time_sec": start_time,  # Each chunk is 10 seconds, so start time is chunk index * 10
             "end_time_sec": end_time,  # Use actual duration for last chunk
-            "start_frame": start_time * video_fps,
-            "end_frame": end_time * video_fps,
+            "start_frame": round(start_time * video_fps),
+            "end_frame": round(end_time * video_fps),
             "text": final_sent,
             "no_speech_prob": no_speech_probs[-1] if no_speech_probs else 0
         }
@@ -602,8 +686,8 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
 
     # Process any remaining audio embeddings in the batch
     if text_clip_tensor_batch:
-        text_embeddings = get_text_embedding_batch(text_clip_tensor_batch, device, AUDIO_BATCH_SIZE)
-        text_embeddings_np = text_embeddings.cpu().numpy() if text_embeddings is not None else None
+        text_embeddings = get_text_embedding_batch(text_clip_tensor_batch)
+        text_embeddings_np = text_embeddings.to(torch.float32).cpu().numpy() if text_embeddings is not None else None
         # print("Text embeddings shape:", text_embeddings_np.shape)
         faiss.normalize_L2(text_embeddings_np)
         current_idx = text_index.ntotal
@@ -659,8 +743,8 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
     current_clip_tensor_batch = []
     current_clip_metadata_batch = []
     new_usage_hours = 0.0
-    embedding_dim = 768
-    res = faiss.StandardGpuResources() if torch.cuda.is_available() else None
+    embedding_dim = config.embedding_dimension
+    # res = faiss.StandardGpuResources() if torch.cuda.is_available() else None
     if index is None:
         index = faiss.IndexIDMap(faiss.IndexFlatIP(embedding_dim))
     video_idx = 0
@@ -734,16 +818,23 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
                         config.indexing_status['errors'].append(f"Error processing scene {i+1} in {video_filename}: {str(e)}")
                         frames = []
                 if len(frames) != config.FRAMES_PER_CLIP_FOR_EMBEDDING:
-                    print(f"Warning: Expected {config.FRAMES_PER_CLIP_FOR_EMBEDDING} frames, but got {len(frames)} for {video_filename} (scene {scene_idx}), skipping...")
-                    config.indexing_status['errors'].append(f"Expected {config.FRAMES_PER_CLIP_FOR_EMBEDDING} frames, but got {len(frames)} for {video_filename} (scene {scene_idx}), skipping...")
-                    continue
+                    if len(frames) > 0 and len(frames) < config.FRAMES_PER_CLIP_FOR_EMBEDDING:
+                        # Duplicate last frame until length matches
+                        last_frame = frames[-1]
+                        while len(frames) < config.FRAMES_PER_CLIP_FOR_EMBEDDING:
+                            frames.append(last_frame)
+                    else:
+                        print(f"Warning: Expected {config.FRAMES_PER_CLIP_FOR_EMBEDDING} frames, but got {len(frames)} for {video_filename} (scene {scene_idx}), skipping...")
+                        config.indexing_status['errors'].append(f"Expected {config.FRAMES_PER_CLIP_FOR_EMBEDDING} frames, but got {len(frames)} for {video_filename} (scene {scene_idx}), skipping...")
+                        continue
+                    
                 if not len(frames):
                     print(f'len of frames is {len(frames)}')
                     continue
-                clip_tensor = preprocess_frames_for_batch(frames)
-                if clip_tensor is None:
-                    print(f'clip_tensor is none for {video_filename} (scene {scene_idx}), skipping...')
-                    continue
+                # clip_tensor = preprocess_frames_for_batch(frames)
+                # if clip_tensor is None:
+                #     print(f'clip_tensor is none for {video_filename} (scene {scene_idx}), skipping...')
+                #     continue
 
                 clip_metadata = {
                     "source_id": str(source_id),
@@ -759,7 +850,7 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
                     "embedding_filename": embedding_filename,
                     "embedding_type": "video",
                 }
-                current_clip_tensor_batch.append(clip_tensor)
+                current_clip_tensor_batch.append(frames)
                 current_clip_metadata_batch.append(clip_metadata)
 
                 todays_date = datetime.now()
@@ -782,6 +873,7 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
                 config.indexing_status["overall_scenes_processed"] += 1
 
                 # Only increment scenes_processed when actually processed (after batch)
+                # print(len(current_clip_tensor_batch), config.BATCH_SIZE)
                 if len(current_clip_tensor_batch) >= config.BATCH_SIZE:
                     # Update license hours
                     current_hours = config.OFFLINE_LICENSE_LIMIT_HOURS - new_usage_hours
@@ -860,7 +952,7 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
         except Exception as e:
             config.indexing_status['errors'].append(f"Failed to save indices: {str(e)}") 
     
-    del model
+    # del model
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     # config.indexing_status['processed_videos'] += len(video_files)

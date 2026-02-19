@@ -19,7 +19,7 @@ device = None
 
 def get_embedding_model(model_path="./checkpoints/models--Qwen--Qwen3-VL-Embedding-8B/snapshots/a12d6118f720ceb6d95f7d1cad4e8aeccddd9340"):
     """
-    Get the Qwen3VLEmbedder model as a singleton
+    Get the Model as a singleton
     
     Args:
         model_path: Path to the Qwen3-VL-Embedding model
@@ -37,9 +37,9 @@ def get_embedding_model(model_path="./checkpoints/models--Qwen--Qwen3-VL-Embeddi
                 torch_dtype=torch.bfloat16,
                 attn_implementation="flash_attention_2"
             )
-            print(f"Qwen3VLEmbedder model loaded successfully on {device}")
+            print(f"Model loaded successfully on {device}")
         except Exception as e:
-            print(f"Error loading Qwen3VLEmbedder model: {e}")
+            print(f"Error loading Model: {e}")
             qwen3vl_model = None
             device = None
     
@@ -92,7 +92,7 @@ def get_video_embedding(
     """
     model, dev = get_embedding_model()
     if model is None:
-        print("Error: Qwen3VLEmbedder model is not loaded")
+        print("Error: Model is not loaded")
         return None
     
     try:
@@ -147,7 +147,7 @@ def get_text_embedding(
     """
     model, dev = get_embedding_model()
     if model is None:
-        print("Error: Qwen3VLEmbedder model is not loaded")
+        print("Error: Model is not loaded")
         return None
     
     try:
@@ -187,7 +187,7 @@ def get_text_embedding_batch(
     """
     model, dev = get_embedding_model()
     if model is None:
-        print("Error: Qwen3VLEmbedder model is not loaded")
+        print("Error: Model is not loaded")
         return None
     
     try:
@@ -229,7 +229,7 @@ def get_image_embedding(
     """
     model, dev = get_embedding_model()
     if model is None:
-        print("Error: Qwen3VLEmbedder model is not loaded")
+        print("Error: Model is not loaded")
         return None
     
     try:
@@ -256,20 +256,24 @@ def get_image_embedding(
         import traceback
         traceback.print_exc()
         return None
-from transformers import AutoProcessor, AutoModel, BitsAndBytesConfig
 
+from transformers import AutoProcessor, AutoModel
+# model = AutoModel.from_pretrained("google/siglip2-large-patch16-512", cache_dir = "checkpoints/google/siglip2-large-patch16-512" )
+reranking_model = None
+reranking_processor = None
 
-model = AutoModel.from_pretrained("google/siglip2-large-patch16-512", )
 def get_reranker_model():
+    global reranking_model, reranking_processor
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     try:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        bnb_config = BitsAndBytesConfig(load_in_4bit=True)
-        # model = AutoModel.from_pretrained("google/siglip2-base-patch32-256", quantization_config=bnb_config, device_map="auto", attn_implementation="flash_attention_2")
-        # processor = AutoProcessor.from_pretrained("google/siglip2-base-patch32-256")
-        model = AutoModel.from_pretrained("google/siglip2-so400m-patch14-384", device_map="auto", attn_implementation="flash_attention_2")
-        processor = AutoProcessor.from_pretrained("google/siglip2-so400m-patch14-384")
+        if reranking_model is None or reranking_processor is None:
+            # bnb_config = BitsAndBytesConfig(load_in_4bit=True)
+            # model = AutoModel.from_pretrained("google/siglip2-base-patch32-256", quantization_config=bnb_config, device_map="auto", attn_implementation="flash_attention_2")
+            # processor = AutoProcessor.from_pretrained("google/siglip2-base-patch32-256")
+            reranking_model = AutoModel.from_pretrained("google/siglip2-so400m-patch14-384", device_map="auto", attn_implementation="flash_attention_2", cache_dir = "checkpoints")
+            reranking_processor = AutoProcessor.from_pretrained("google/siglip2-so400m-patch14-384")
 
-        return model, processor, device
+        return reranking_model, reranking_processor, device
     except Exception as e:
         print(f"Error loading reranker model: {e}")
         return None, None, None

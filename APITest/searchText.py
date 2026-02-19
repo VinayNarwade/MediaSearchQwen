@@ -11,6 +11,7 @@ search_payload = {
     # "sortBy": "relevance",
     "startIndex": 1,
     "limit": 10,
+    "rerank": True,
     # "dbName": "ei2",
     "sourceIds" : ["cos", "tos"],
     # "indexType": "text"

@@ -301,12 +301,12 @@ class DatabaseManager:
             unique_videos = unique_videos.distinct().count()
             
             return {
-                'total_scenes': total_scenes,
+                'total_entries': total_scenes,
                 'unique_files': unique_videos
             }
         except Exception as e:
             print(f"Error getting video stats: {e}")
-            return {'total_scenes': 0, 'unique_files': 0}
+            return {'total_entries': 0, 'unique_files': 0}
         finally:
             session.close()
     
@@ -418,7 +418,6 @@ class DatabaseManager:
             'source_id': metadata_record.source_id,
             'video_filename': metadata_record.video_filename,
             'video_path_relative': metadata_record.video_path_relative,
-            'total_scenes': metadata_record.total_scenes,
             'start_frame': metadata_record.start_frame,
             'end_frame': metadata_record.end_frame,
             'start_time_sec': metadata_record.start_time_sec,
@@ -432,7 +431,8 @@ class DatabaseManager:
         if metadata_record.embedding_type == 'video':
             metadata_dict.update({
                 'scene_index': metadata_record.scene_index,
-                'duration_sec': metadata_record.duration_sec
+                'duration_sec': metadata_record.duration_sec,
+                'total_scenes': metadata_record.total_scenes,
             })
         elif metadata_record.embedding_type == 'text':
             metadata_dict.update({
