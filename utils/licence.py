@@ -6,12 +6,13 @@ from filelock import FileLock
 config = get_config()
 LOCK_TIMEOUT = 30
 
-def encrypt_data_update(data, expiry_date, hourly_credits, recent_date, password): #used in base 
+def encrypt_data_update(data, expiry_date, hourly_credits, renewal_credits, recent_date, password):
     key = get_key_from_password(password)
     fernet = Fernet(key)
     data += b"\n" + expiry_date.encode()
     data += b"\n" + str(hourly_credits).encode()
     data += b"\n" + str(recent_date).encode()
+    data += b"\n" + str(renewal_credits).encode()
     encrypted = fernet.encrypt(data)
     return encrypted
 
@@ -24,7 +25,7 @@ def update_usage_hours(hrs):
             # Read and write under same lock to prevent race conditions
             data_dec = decrypt_file(config.LICENCE_KEY_FILE, config.PASSWORD).decode()
             lines = data_dec.split("\n")
-            encrypted_data = encrypt_data_update(lines[0].encode(),lines[1],hrs, config.RECENT_DATE, config.PASSWORD)
+            encrypted_data = encrypt_data_update(lines[0].encode(),lines[1], hrs, config.MONTHLY_RENEWAL_CREDITS, config.RECENT_DATE, config.PASSWORD)
             with open(config.LICENCE_KEY_FILE,'wb') as f:
                 f.write(encrypted_data)
         # print("Updated usage hours successfully")
@@ -41,7 +42,7 @@ def set_recent_date(dt): #used in index and licence
             # Read and write under same lock to prevent race conditions
             data_dec = decrypt_file(config.LICENCE_KEY_FILE, config.PASSWORD).decode()
             lines = data_dec.split("\n")
-            encrypted_data = encrypt_data_update(lines[0].encode(),lines[1], config.OFFLINE_LICENSE_LIMIT_HOURS, dt, config.PASSWORD)
+            encrypted_data = encrypt_data_update(lines[0].encode(),lines[1], config.OFFLINE_LICENSE_LIMIT_HOURS, config.MONTHLY_RENEWAL_CREDITS, dt, config.PASSWORD)
             with open(config.LICENCE_KEY_FILE,'wb') as f:
                 f.write(encrypted_data)
     except Exception as e:
@@ -61,6 +62,10 @@ def check_licence_validation():
                 expiry_date = datetime.fromisoformat(dec_data[1].strip())
                 offline_hours = float(dec_data[2])
                 recent_date = datetime.fromisoformat(dec_data[3])
+                try:
+                    MONTHLY_RENEWAL_CREDITS = float(dec_data[4])
+                except:
+                    MONTHLY_RENEWAL_CREDITS = 1000
                 curr_time = datetime.now()
                 
                 # Check if we need to update hours or date
@@ -68,7 +73,7 @@ def check_licence_validation():
                 
                 if (recent_date.year == curr_time.year and recent_date.month < curr_time.month) or recent_date.year < curr_time.year:
                     # Reset to 1000 hours on new month/year
-                    offline_hours = 1000
+                    offline_hours = MONTHLY_RENEWAL_CREDITS
                     # print("resetting hours to 1000")
                     needs_update = True
                     
@@ -83,6 +88,7 @@ def check_licence_validation():
                         dec_data[0].encode(),
                         expiry_date.isoformat(),
                         offline_hours,
+                        MONTHLY_RENEWAL_CREDITS,
                         recent_date.isoformat(),
                         config.PASSWORD
                     )
@@ -93,6 +99,7 @@ def check_licence_validation():
                 config.EXPIRYDATE = expiry_date
                 config.OFFLINE_LICENSE_LIMIT_HOURS = offline_hours
                 config.RECENT_DATE = recent_date
+                config.MONTHLY_RENEWAL_CREDITS = MONTHLY_RENEWAL_CREDITS
 
                 uuid_ = subprocess.check_output(
                     ["sudo", "dmidecode", "-s", "system-uuid"], stderr=subprocess.DEVNULL
@@ -108,7 +115,7 @@ def check_licence_validation():
             return 0
         
     except Exception as e:
-        print(f"Error checking licence validation")
+        print(f"Error checking licence validation: {e}")
         return 0
 
 def create_licence_requirement():

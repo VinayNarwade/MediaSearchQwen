@@ -86,22 +86,25 @@ def get_indices_distances(index, query_embedding_np, k, sourceIds, db_manager, d
                 #create empty faiss_ids_array 
                 faiss_ids_array = []
                 d = index.d 
+                ids_array = faiss.vector_to_array(index.id_map)
                 temp_index = faiss.IndexFlatIP(d) # Use L2 for Euclidean distance, IndexFlatIP for dot product/cosine
                 for source_id in sourceIds:
                     curr_faiss_ids = faiss_ids_dict.get(source_id, [])
-                    n_vectors = max(curr_faiss_ids) - min(curr_faiss_ids) + 1
-                    curr_subset_vectors = index.index.reconstruct_n(min(curr_faiss_ids), n_vectors)
-                    # Add the subset vectors to the temporary index
-                    temp_index.add(curr_subset_vectors)
-                    #add current faiss ids into faiss_ids_array
-                    faiss_ids_array.extend(range(min(curr_faiss_ids), min(curr_faiss_ids)+n_vectors))
+                    for fid in curr_faiss_ids:
+                        internal_fid = np.where(ids_array == fid)[0]
+                        if len(internal_fid) == 0:
+                            continue
+                        internal_fid = internal_fid[0]
+                        vector = index.index.reconstruct(int(internal_fid)).reshape(1, -1)
+                        temp_index.add(vector)
+                        faiss_ids_array.append(fid)
                 faiss_ids_array = np.array(faiss_ids_array, dtype='int64')
                 distances, local_indices = temp_index.search(query_embedding_np, k)
                 indices = [faiss_ids_array[local_indices[0]]]
             else:
-                # distances, indices = index.search(query_embedding_np, k)
-                distances = np.array([], dtype=np.float32)
-                indices = np.array([], dtype='int64')
+                #if no faiss ids found for the sourceIds, return empty results instead of searching entire index
+                distances = np.array([[]], dtype='float32')
+                indices = np.array([[]], dtype='int64')
         except Exception as e:
             distances, indices = index.search(query_embedding_np, k)
     else:

@@ -862,9 +862,9 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
 
                 if (config.RECENT_DATE.year == todays_date.year and config.RECENT_DATE.month < todays_date.month) or config.RECENT_DATE.year < todays_date.year:
                     # print("resetting to 1000 hours")
-                    update_usage_hours(1000)
-                    config.OFFLINE_LICENSE_LIMIT_HOURS = 1000
-                
+                    update_usage_hours(config.MONTHLY_RENEWAL_CREDITS)
+                    config.OFFLINE_LICENSE_LIMIT_HOURS = config.MONTHLY_RENEWAL_CREDITS
+
                 config.RECENT_DATE = todays_date
                 set_recent_date(config.RECENT_DATE)
 
@@ -975,6 +975,9 @@ def index_videos(filepaths, sourceIds, video_fps_list, use_audio_list, is_video,
     
     if config.indexing_status['in_progress']:
         return {'error': 'Indexing already in progress'}, 409
+    
+    if config.removal_in_progress:
+        return {'error': 'Removal process in progress, please try again later'}, 409
 
     if not filepaths:
         return {'error': 'No filenames provided'}, 400

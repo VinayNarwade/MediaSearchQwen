@@ -5,7 +5,7 @@ from config import get_config
 # Get the global configuration instance
 config = get_config()
 
-def reconstruct_index(sourceId, database_name, index_type='both'):
+def remove_from_index(sourceId, database_name, index_type='both'):
     db_manager = get_db_manager()
     index_files = get_index_files(database_name)
     if index_type in ['video', 'both']:
@@ -14,37 +14,23 @@ def reconstruct_index(sourceId, database_name, index_type='both'):
             # Get all faiss_ids for the source from metadata
             faiss_ids = db_manager.get_faiss_ids_by_source_id_and_type(sourceId, 'video', database_name)
             if faiss_ids:
+                video_index.remove_ids(np.array(faiss_ids, dtype='int64'))
                 fake_vector = np.zeros((1, video_index.d), dtype='float32')
-                faiss.normalize_L2(fake_vector)
-                new_index = faiss.IndexIDMap(faiss.IndexFlatIP(video_index.d))
-                for i in range(video_index.ntotal):
-                    if i in faiss_ids:
-                        new_index.add_with_ids(fake_vector, np.array([i], dtype='int64'))
-                    else:
-                        vector = video_index.index.reconstruct(i).reshape(1, -1)
-                        new_index.add_with_ids(vector, np.array([i], dtype='int64'))
-
-                if not save_index(index_files['video'], new_index):
+                fake_vecs = np.repeat(fake_vector, len(faiss_ids), axis=0)
+                video_index.add_with_ids(fake_vecs, np.array(faiss_ids, dtype='int64'))
+            if not save_index(index_files['video'], video_index):
                     print(f"Error saving updated video index after replacing vectors for source {sourceId}")
+            
     if index_type in ['text', 'both']:
         text_index = load_index(index_files['text'])
         if text_index is not None:
             faiss_ids = db_manager.get_faiss_ids_by_source_id_and_type(sourceId, 'text', database_name)
             if faiss_ids:
-                
+                text_index.remove_ids(np.array(faiss_ids, dtype='int64'))
                 fake_vector = np.zeros((1, text_index.d), dtype='float32')
-                faiss.normalize_L2(fake_vector)
-                new_index = faiss.IndexIDMap(faiss.IndexFlatIP(text_index.d))
-
-                for i in range(text_index.ntotal):
-                    
-                    if i in faiss_ids:
-                        new_index.add_with_ids(fake_vector, np.array([i], dtype='int64'))
-                    else:
-                        vector = text_index.index.reconstruct(i).reshape(1, -1)
-                        new_index.add_with_ids(vector, np.array([i], dtype='int64'))
-
-                if not save_index(index_files['text'], new_index):
+                fake_vecs = np.repeat(fake_vector, len(faiss_ids), axis=0)
+                text_index.add_with_ids(fake_vecs, np.array(faiss_ids, dtype='int64'))
+            if not save_index(index_files['text'], text_index):
                     print(f"Error saving updated text index after replacing vectors for source {sourceId}")
 
 def remove_video(sourceId, db_name, index_type='both'):
@@ -57,12 +43,16 @@ def remove_video(sourceId, db_name, index_type='both'):
     """
     # if db_name and not db_name.endswith(".index"):
     #     db_name = db_name + ".index"
+    config.removal_in_progress = True
     
     if not check_licence_validation():
+        config.removal_in_progress = False
         return {'error': 'License expired or invalid'}, 403
     if not sourceId:
+        config.removal_in_progress = False
         return {'error': 'No sourceId provided'}, 400
     if config.indexing_status['in_progress']:
+        config.removal_in_progress = False
         return {'error': 'Cannot remove videos while indexing is in progress'}, 409
 
     db_manager = get_db_manager()
@@ -76,9 +66,9 @@ def remove_video(sourceId, db_name, index_type='both'):
         if db_name is None:
             dbs = db_manager.get_all_databases()
             for db in dbs:
-                reconstruct_index(sourceId, db, index_type)
+                remove_from_index(sourceId, db, index_type)
         else:
-            reconstruct_index(sourceId, db_name, index_type)
+            remove_from_index(sourceId, db_name, index_type)
 
         if index_type == 'both':
             # Remove all metadata for the source
@@ -88,12 +78,14 @@ def remove_video(sourceId, db_name, index_type='both'):
             removed_count = db_manager.remove_metadata_by_source_id_and_type(sourceId, database_name, index_type)
 
         if removed_count == 0:
+            config.removal_in_progress = False
             return {'message': f'No clips found for video with Source ID {sourceId} of type {index_type}', 'removed': 0}, 200
 
         # Reset search results cache
         config.prevResults = None
         config.prevAudioResults = None
         config.prevImageResults = None
+        config.removal_in_progress = False
 
         return {
             'success': True,

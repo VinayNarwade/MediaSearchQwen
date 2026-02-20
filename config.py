@@ -75,6 +75,9 @@ class AppConfig:
         self.prevAudioResults = None
         self.embedding_dimension = 4096
 
+        self.MONTHLY_RENEWAL_CREDITS = 0
+        self.removal_in_progress = False
+
     
     def initialize_config(self, app):
         """
