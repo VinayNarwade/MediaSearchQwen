@@ -4,7 +4,7 @@ import torch.distributed as dist
 from torch import nn, Tensor
 from transformers import AutoConfig
 
-from ...models.qwen3_vl_embedding import Qwen3VLEmbedder
+from ...models.embedding import Qwen3VLEmbedder
 
 
 class MMEBEmbeddingModel(nn.Module):

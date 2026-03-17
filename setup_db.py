@@ -6,10 +6,10 @@ Run this before starting the video search application.
 
 import os
 import sys
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+# load_dotenv()
 
 def setup_database():
     """Initialize the database and create tables"""

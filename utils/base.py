@@ -16,7 +16,7 @@ import subprocess
 from db_utils import get_db_manager
 
 from datetime import datetime
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from generate_key import *
 from config import get_config
 

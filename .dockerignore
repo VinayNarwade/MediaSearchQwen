@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# Directories excluded from image
+work_dir/
+APITest/
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs & temp files
+*.log
+*.tmp
+*.bak
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Test files
+rest_test.py
+
+# Build artefacts
+*.egg-info/
+dist/
+build/

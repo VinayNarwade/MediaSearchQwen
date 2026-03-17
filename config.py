@@ -6,12 +6,12 @@ This module provides a centralized configuration class that can be shared across
 import os
 from datetime import datetime
 
-try:
-    from dotenv import load_dotenv
-    DOTENV_AVAILABLE = True
-except ImportError:
-    DOTENV_AVAILABLE = False
-    print("Warning: python-dotenv not available. Using environment variables directly.")
+# try:
+#     from dotenv import load_dotenv
+#     DOTENV_AVAILABLE = True
+# except ImportError:
+#     DOTENV_AVAILABLE = False
+#     print("Warning: python-dotenv not available. Using environment variables directly.")
 
 
 class AppConfig:
@@ -33,13 +33,13 @@ class AppConfig:
         self.LICENCE_KEY_FILE = "work_dir/licence_key.txt"
         
         # Load environment variables
-        if DOTENV_AVAILABLE:
-            load_dotenv()
+        # if DOTENV_AVAILABLE:
+        #     load_dotenv()
         
         # License-related configuration
         startdate_str = os.getenv("STARTDATE", "2025-04-10T00:00:00")
         self.STARTDATE = datetime.fromisoformat(startdate_str)
-        self.PASSWORD = os.getenv("PASSWORD", "default-password")
+        self.PASSWORD = os.getenv("PASSWORD", "Giuy439rfhcb$uix-b312")
         self.OFFLINE_LICENSE_LIMIT_HOURS = 0
         self.RECENT_DATE = self.STARTDATE
         self.EXPIRYDATE = None  # Will be set by license validation

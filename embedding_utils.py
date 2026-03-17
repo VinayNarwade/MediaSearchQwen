@@ -11,7 +11,7 @@ import torchaudio
 from PIL import Image
 from transformers import AutoProcessor, AutoModel
 
-from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
+from models.embedding import Qwen3VLEmbedder
 
 # Global model instances (singleton pattern)
 qwen3vl_model = None
