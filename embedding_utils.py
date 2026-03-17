@@ -11,7 +11,7 @@ import torchaudio
 from PIL import Image
 from transformers import AutoProcessor, AutoModel
 
-from models.embedding import Qwen3VLEmbedder
+from src.models.embedding import Qwen3VLEmbedder
 
 # Global model instances (singleton pattern)
 qwen3vl_model = None
@@ -99,7 +99,7 @@ def get_video_embedding(
         if video_frames_list is None:
             raise ValueError("video_frames_list must be provided")
         
-        print(f"{len(video_frames_list)} frames received for embedding")
+        # print(f"{len(video_frames_list)} frames received for embedding")
 
         inputs = []
         for frames in video_frames_list:
@@ -308,9 +308,9 @@ def rerank_videos_by_text(
         logits_per_text = logits_per_text * logit_scale.exp() + logit_bias
 
         probs = torch.softmax(logits_per_text, dim=-1)
-        print(f"Probabilities: {probs}")
+        # print(f"Probabilities: {probs}")
         t2 = time.time()
-        print("Time taken for reranking:", t2 - t1)
+        # print("Time taken for reranking:", t2 - t1)
         return probs[0].cpu().tolist()
     except Exception as e:
         print(f"Error during reranking: {e}")

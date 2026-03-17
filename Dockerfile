@@ -8,7 +8,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/app/.venv/bin:$PATH"
 
 # System dependencies
+# python3.12 is not in the default Ubuntu 22.04 repos – add deadsnakes PPA first
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        curl \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
         python3.12 \
         python3.12-dev \
         python3.12-venv \
@@ -17,7 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         ninja-build \
         git \
-        curl \
         ffmpeg \
         libsm6 \
         libxext6 \
@@ -53,7 +57,7 @@ RUN pip install --no-cache-dir \
         "qwen-vl-utils>=0.0.14" \
         "scipy>=1.16.3" \
         "setuptools>=80.9.0" \
-        "transformers>=4.57.3"
+        "transformers==4.57.3"
 
 # ── requirements.txt deps ─────────────────────────────────────────────────────
 COPY requirements.txt .
@@ -92,14 +96,49 @@ RUN pip install --no-cache-dir \
 
 # ── git-based packages ────────────────────────────────────────────────────────
 RUN pip install --no-cache-dir \
-        "peft @ git+https://github.com/huggingface/peft@08cb3dde577747f6ca6638c884fd66fd16cf2e9d" \
+        # "peft @ git+https://github.com/huggingface/peft@08cb3dde577747f6ca6638c884fd66fd16cf2e9d" \
         "pytorchvideo @ git+https://github.com/facebookresearch/pytorchvideo.git"
 
 # ── flash-attn (must come after torch, no build isolation) ────────────────────
 RUN pip install --no-cache-dir flash-attn --no-build-isolation
 
 
-# ─── Stage 2: Runtime ────────────────────────────────────────────────────────
+# ─── Stage 2: Compile – produce .pyc bytecode only ──────────────────────────
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 AS compiler
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        python3.12 \
+        python3.12-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Use an isolated directory /build – completely separate from .venv –
+# so that compileall and find only ever touch our application source files.
+WORKDIR /build
+
+# Copy all application source files into /build
+COPY app.py \
+     config.py \
+     db_utils.py \
+     embedding_utils.py \
+     generate_key.py \
+     setup_db.py \
+     ./
+
+COPY utils/ ./utils/
+COPY src/   ./src/
+
+# Compile every .py → .pyc beside it (-b flag), then delete all .py sources.
+# Because /build contains ONLY our source files (no .venv), find is safe and clean.
+RUN python3.12 -m compileall -b -q . \
+    && find . -name "*.py" -delete
+
+
+# ─── Stage 3: Runtime ────────────────────────────────────────────────────────
 FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -109,7 +148,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/app/.venv/bin:$PATH"
 
 # Runtime system dependencies only
+# python3.12 is not in the default Ubuntu 22.04 repos – add deadsnakes PPA first
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common \
+        curl \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
         python3.12 \
         python3.12-venv \
         ffmpeg \
@@ -119,27 +163,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         libsndfile1 \
         libpq5 \
-        curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+RUN apt update && \
+    apt install -y git wget ffmpeg libsm6 libxext6 dmidecode sudo 
+
 # Copy the venv from builder
 COPY --from=builder /app/.venv /app/.venv
 
-# Copy application source (excluding work_dir and APITest)
-COPY app.py \
-     config.py \
-     db_utils.py \
-     embedding_utils.py \
-     generate_key.py \
-     create_key.py \
-     languagebind_utils.py \
-     setup_db.py \
-     ./
+# Copy checkpoints
+COPY ./checkpoints ./checkpoints
 
-COPY utils/ ./utils/
-COPY src/  ./src/
+# Copy only the compiled .pyc bytecode – no .py sources included
+COPY --from=compiler /build/app.pyc              ./app.pyc
+COPY --from=compiler /build/config.pyc           ./config.pyc
+COPY --from=compiler /build/db_utils.pyc         ./db_utils.pyc
+COPY --from=compiler /build/embedding_utils.pyc  ./embedding_utils.pyc
+COPY --from=compiler /build/generate_key.pyc     ./generate_key.pyc
+COPY --from=compiler /build/setup_db.pyc         ./setup_db.pyc
+COPY --from=compiler /build/utils/               ./utils/
+COPY --from=compiler /build/src/                 ./src/
 
 # Runtime volume for working directory (models, database files, etc.)
 VOLUME ["/app/work_dir"]
@@ -151,7 +196,13 @@ EXPOSE 5801
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -sf http://localhost:5801/status || exit 1
 
-# Entrypoint – runtime CLI args (--port, --batch_size, --database_url) are
-# appended by docker compose or passed directly on `docker run`.
-ENTRYPOINT ["python", "app.py"]
-CMD ["--port", "5801", "--working_dir", "/app/work_dir"]
+# Entrypoint – run the compiled bytecode directly; runtime CLI args
+# (--port, --batch_size, --database_url) are appended by docker compose
+# or passed directly on `docker run`.
+
+EXPOSE 5800
+
+ENTRYPOINT ["python", "-W", "ignore", "app.pyc"]
+# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "myenv", "python", "app.pyc"]
+
+CMD ["--working_dir", "/work_dir", "--batch_size", "32", "--port", "5800", "--database_url", "sqlite:///work_dir/video_search.db"]

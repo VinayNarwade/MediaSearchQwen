@@ -53,7 +53,7 @@ def fetch_images_from_results(results, num_frames=8):
             frame_numbers = frame_numbers[::step][:num_frames]
         else:
             frame_numbers = frame_numbers[:num_frames]
-        print(f"Extracting frames {frame_numbers} from video: {video_path}")
+        # print(f"Extracting frames {frame_numbers} from video: {video_path}")
         if os.path.exists(video_path):
             try:
                 vidcap = cv2.VideoCapture(video_path)
