@@ -202,6 +202,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 
 EXPOSE 5800
 
+# Cloud license management – customers must supply these at runtime:
+#   docker run -e LICENSE_KEY="<token>" -e LICENSE_SERVER_URL="https://your-project.vercel.app" ...
+ENV LICENSE_KEY=""
+ENV LICENSE_SERVER_URL="https://licenseserver-lime.vercel.app"
+
 ENTRYPOINT ["python", "-W", "ignore", "app.pyc"]
 # ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "myenv", "python", "app.pyc"]
 
