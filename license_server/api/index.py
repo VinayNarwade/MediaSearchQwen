@@ -131,6 +131,7 @@ def _get_or_init_usage(customer_id: str, monthly_credits: float) -> dict:
     if usage.get("last_reset_month") != current_month:
         # New month – reset credits
         usage = {"used_hours": 0.0, "last_reset_month": current_month}
+        _save_usage(customer_id, usage)
     if "used_hours" not in usage:
         usage["used_hours"] = 0.0
     return usage
@@ -269,6 +270,7 @@ def _handle_heartbeat(handler: BaseHTTPRequestHandler):
     body = _read_body(handler)
     license_key = body.get("license_key", "").strip()
     hours_used = float(body.get("hours_used", 0))
+    hours_used = max(0.0, hours_used)  # prevent negative increments
 
     if not license_key:
         _send_json(handler, 400, {"error": "license_key is required"})

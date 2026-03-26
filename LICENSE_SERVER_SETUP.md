@@ -173,3 +173,9 @@ curl -X POST https://licenseserver-lime.vercel.app/api/license/validate \
   -H "Content-Type: application/json" \
   -d '{"license_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY21lLWNvcnAiLCJleHAiOjE3NzUyNjA4MDAsIm1vbnRobHlfY3JlZGl0cyI6MTAwMC4wLCJpYXQiOjE3NzQzNDIxMTR9.Id2qLn0pRwtuiMjMYr5_W8FGsz_9TNls6O7y3iGjapA"}'
 ```
+
+## 8 Update Hours usage
+
+```
+curl -X POST https://licenseserver-lime.vercel.app/api/license/heartbeat   -H "Content-Type: application/json"   -d '{"license_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlci1hY2Nlc3NvIiwiZXhwIjoxNzc2OTg4ODAwLCJtb250aGx5X2NyZWRpdHMiOjEwMC4wLCJpYXQiOjE3NzQzNDE2OTh9.QVWwNirLtigIrFIIG1TziHXaOKuIWkkkSWzjZvtuQO4", "hours_used": 1}'
+```
