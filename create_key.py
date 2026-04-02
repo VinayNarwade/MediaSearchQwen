@@ -23,6 +23,6 @@ def encrypt_file(input_file, expiry_date, hourly_credits, renewal_hourly_credits
     encrypted = fernet.encrypt(data)
     return encrypted
  
-print(encrypt_file("work_dir/client_hardware_info.txt", "2026-11-10T00:00:00", 1000, 5000, "2026-02-01T00:00:00", "Giuy439rfhcb$uix-b312").decode())
+print(encrypt_file("work_dir/client_hardware_info.txt", "2026-07-03T00:00:00", 1000, 1000, "2026-03-01T00:00:00", "Giuy439rfhcb$uix-b312").decode())
 with open("work_dir/licence_key.txt", "w") as f:
-    f.write(encrypt_file("work_dir/client_hardware_info.txt", "2026-11-10T00:00:00", 1000, 5000, "2026-02-01T00:00:00", "Giuy439rfhcb$uix-b312").decode())
+    f.write(encrypt_file("work_dir/client_hardware_info.txt", "2026-07-03T00:00:00", 1000, 1000, "2026-03-01T00:00:00", "Giuy439rfhcb$uix-b312").decode())

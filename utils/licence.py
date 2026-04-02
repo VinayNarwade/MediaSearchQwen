@@ -148,9 +148,9 @@ def update_usage_hours(hrs):  # used in index
         # Flush immediately if it has been more than _HEARTBEAT_INTERVAL since last sync
         with _state_lock:
             since_last = time.time() - _state["last_heartbeat_ts"]
-        print(f"[licence] Time since last heartbeat: {since_last:.2f}s")
+        # print(f"[licence] Time since last heartbeat: {since_last:.2f}s")
         if since_last >= _OFFLINE_TRACK_INTERVAL:
-            print(f"[licence] Flushing heartbeat")
+            # print(f"[licence] Flushing heartbeat")
             _flush_heartbeat()
     except Exception as e:
         print(f"[licence] Error updating usage hours: {e}")

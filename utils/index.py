@@ -945,13 +945,13 @@ def run_indexing_process(video_files, sourceIds, video_fps_list, use_audio_list,
             index_files = get_index_files(db_name)
         
             # Convert indices to CPU if needed
-            if torch.cuda.is_available():
-                video_index_cpu = faiss.index_gpu_to_cpu(index)
-            else:
-                video_index_cpu = index
+            # if torch.cuda.is_available():
+            #     video_index_cpu = faiss.index_gpu_to_cpu(index)
+            # else:
+            #     video_index_cpu = index
 
             # Save video embeddings
-            if not save_index(index_files['video'], video_index_cpu):
+            if not save_index(index_files['video'], index):
                 config.indexing_status['errors'].append("Failed to save video index")
                 
         except Exception as e:
