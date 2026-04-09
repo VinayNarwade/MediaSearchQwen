@@ -336,7 +336,7 @@ prevAudioQuery = None
 prevAudioDbName = None
 prevAudioSourceIds = None
 
-def imagesearch_api(image_path,text, threshold, startIndex, limit, dbName, sourceIds=None):
+def imagesearch_api(image_path, text, threshold, startIndex, limit, dbName, sourceIds=None):
     global prevImageQuery, prevImageDbName, prevImageSourceIds
     image_path = os.path.join(config.WORKING_DIR, image_path)
     start_time = time.time()
@@ -354,6 +354,9 @@ def imagesearch_api(image_path,text, threshold, startIndex, limit, dbName, sourc
         sourceIds = [str(sid) for sid in sourceIds]  # Ensure all are strings
     elif sourceIds is None or sourceIds == []:
         sourceIds = None  # Keep current logic
+    
+    if text:
+        config.prevImageResults = None
 
     if prevImageQuery != image_path:
         prevImageQuery = image_path

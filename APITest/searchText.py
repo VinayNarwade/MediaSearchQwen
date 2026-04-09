@@ -7,13 +7,12 @@ BASE_URL = f"http://127.0.0.1:{port_num}"
 
 search_url = f"{BASE_URL}/textsearch"
 search_payload = {
-    "query": "Time flies",
+    "query": "old mushrooms",
     # "sortBy": "relevance",
     "startIndex": 1,
     "limit": 10,
-    "rerank": True,
     "dbName": "vllm",
-    # "sourceIds" : ["cos", "tos"],
+    #"sourceIds" : ["cos", "tos"],
     # "indexType": "text"
 }
 

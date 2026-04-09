@@ -109,13 +109,13 @@ def prepare_vllm_inputs_worker(video_path, tokenizer, instruction: str = "Repres
             return_video_kwargs=True,
             
         )
-        print("processed vision info")
+        # print("processed vision info")
         multi_modal_data = {}
         if video_inputs:
             videos, video_metadata = zip(*video_inputs)
             multi_modal_data["video"] = [(v, m) for v, m in zip(list(videos), list(video_metadata))]
-            print("len of videos:", len(videos))
-            print("videos[0] shape:", videos[0].shape)
+            # print("len of videos:", len(videos))
+            # print("videos[0] shape:", videos[0].shape)
 
         return {
             "prompt": prompt_text,
@@ -182,10 +182,10 @@ def get_video_embedding(
 ) -> Optional[torch.Tensor]:
 
     model, device = get_embedding_model()
-    print("len of input: ", len(video_frames_list))
+   # print("len of input: ", len(video_frames_list))
     try:
         embeddings = process_videos_batch(video_frames_list, model, len(video_frames_list))
-        print("len of embeddings: ", len(embeddings))
+        # print("len of embeddings: ", len(embeddings))
         return embeddings
 
     except Exception as e:

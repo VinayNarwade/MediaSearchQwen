@@ -2,7 +2,7 @@ import requests
 import json
 
 
-port_num = 5801
+port_num = 5800
 BASE_URL = f"http://127.0.0.1:{port_num}"
 
 search_url = f"{BASE_URL}/bulk-search"
@@ -11,7 +11,7 @@ search_payload = {
     # "sortBy": "relevance",
     # "startIndex": 1,
     "limit": 10,
-    "dbName": "ei2",
+    "dbName": "vllm",
     "sourceIds" : ["cos", "tos"],
     # "indexType": "text"
 }
