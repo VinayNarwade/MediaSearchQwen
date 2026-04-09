@@ -61,9 +61,9 @@ Run the admin utility **from your machine** (not the customer's):
 ```bash
 python generate_license_key.py \
   --server        https://licenseserver-lime.vercel.app \
-  --admin-secret  <ADMIN_SECRET>                   \
-  --customer-id   acme-corp                        \
-  --expiry        2027-01-01                        \
+  --admin-secret  26d01a48e2c6b9b955a28c74760eb59f                   \
+  --customer-id   super-accesso                        \
+  --expiry        2026-06-06                        \
   --credits       1000
 ```
 

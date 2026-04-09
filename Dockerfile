@@ -41,62 +41,63 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Install PyTorch with CUDA 12.8 first (large wheels, cached separately)
 RUN pip install --no-cache-dir \
-        torch==2.8.0 \
-        torchvision==0.23.0 \
-        torchaudio==2.8.0 \
+        torch==2.9.1 \
+        torchvision==0.24.1 \
+        torchaudio==2.9.1 \
         --extra-index-url https://download.pytorch.org/whl/cu128
 
 # ── pyproject.toml deps (uv sync equivalent) ─────────────────────────────────
 COPY pyproject.toml .
 RUN pip install --no-cache-dir \
-        "accelerate>=1.12.0" \
-        "datasets>=4.4.2" \
-        "ipykernel>=7.1.0" \
-        "matplotlib>=3.10.8" \
-        "ninja>=1.13.0" \
-        "qwen-vl-utils>=0.0.14" \
-        "scipy>=1.16.3" \
-        "setuptools>=80.9.0" \
+        "accelerate==1.12.0" \
+        "datasets==4.4.2" \
+        "ipykernel==7.1.0" \
+        "matplotlib==3.10.8" \
+        "ninja==1.13.0" \
+        "qwen-vl-utils==0.0.14" \
+        "scipy==1.16.3" \
+        "setuptools==80.9.0" \
         "transformers==4.57.3"
 
 # ── requirements.txt deps ─────────────────────────────────────────────────────
 COPY requirements.txt .
 RUN pip install --no-cache-dir \
-        "flask>=3.1.3" \
-        "flask-wtf>=1.2.1" \
-        "werkzeug>=3.0.0" \
-        "jinja2>=3.1.2" \
-        "flask-cors>=4.0.0" \
-        "python-dotenv>=1.0.0" \
-        "numpy>=1.21.2" \
-        "opencv-python-headless>=4.13.0.92" \
-        "Pillow>=10.2.0" \
-        "scenedetect>=0.6.3" \
-        "decord>=0.6.0" \
+        "flask==2.3.3" \
+        "flask-wtf==1.2.1" \
+        "werkzeug==2.3.7" \
+        "jinja2==3.1.6" \
+        "flask-cors==4.0.0" \
+        "python-dotenv==1.0.0" \
+        "numpy==2.2.6" \
+        "opencv-python-headless==4.13.0.92" \
+        "Pillow==12.0.0" \
+        "scenedetect==0.6.7.1" \
+        "decord==0.6.0" \
         "ftfy==6.1.1" \
         "iopath==0.1.10" \
-        "tqdm>=4.66.1" \
+        "tqdm==4.65.0" \
         "urllib3==1.26.15" \
-        "SoundFile" \
+        "soundfile==0.13.1" \
         "cryptography==44.0.3" \
-        "faiss-cpu" \
-        "openai-whisper" \
-        "sqlalchemy" \
+        "faiss-cpu==1.13.2" \
+        "openai-whisper==20250625" \
+        "sqlalchemy==2.0.48" \
         "psycopg2-binary" \
-        "huggingface-hub" \
-        "safetensors" \
-        "tokenizers" \
-        "regex" \
-        "requests" \
-        "pyyaml" \
-        "pyarrow" \
-        "pandas" \
-        "av" \
-        "triton"
+        "huggingface-hub==0.36.0" \
+        "safetensors==0.7.0" \
+        "tokenizers==0.22.1" \
+        "regex==2025.11.3" \
+        "requests==2.32.5" \
+        "pyyaml==6.0.3" \
+        "pyarrow==22.0.0" \
+        "pandas==2.3.3" \
+        "av==16.0.1" \
+        "triton==3.5.1" \
+        "gunicorn==23.0.0"
 
 # ── git-based packages ────────────────────────────────────────────────────────
 RUN pip install --no-cache-dir \
-        # "peft @ git+https://github.com/huggingface/peft@08cb3dde577747f6ca6638c884fd66fd16cf2e9d" \
+        "peft @ git+https://github.com/huggingface/peft@08cb3dde577747f6ca6638c884fd66fd16cf2e9d" \
         "pytorchvideo @ git+https://github.com/facebookresearch/pytorchvideo.git"
 
 # ── flash-attn (must come after torch, no build isolation) ────────────────────
@@ -204,10 +205,18 @@ EXPOSE 5800
 
 # Cloud license management – customers must supply these at runtime:
 #   docker run -e LICENSE_KEY="<token>" -e LICENSE_SERVER_URL="https://your-project.vercel.app" ...
-ENV LICENSE_KEY=""
+ENV LICENSE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlci1hY2Nlc3NvIiwiZXhwIjoxNzgwNzA0MDAwLCJtb250aGx5X2NyZWRpdHMiOjEwMDAuMCwiaWF0IjoxNzc1NzEzNzQ1fQ.CWqIvbaDiy0xzUi0kO6hXSeHVL4ZK4WgqP5DnCgUUKw"
 ENV LICENSE_SERVER_URL="https://licenseserver-lime.vercel.app"
 
-ENTRYPOINT ["python", "-W", "ignore", "app.pyc"]
-# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "myenv", "python", "app.pyc"]
+# App config passed via environment variables (read by argparse fallback in app.py)
+ENV WORKING_DIR="/work_dir"
+ENV BATCH_SIZE="4"
+ENV PORT="5800"
+ENV DATABASE_URL="sqlite:////work_dir/video_search.db"
 
-CMD ["--working_dir", "/work_dir", "--batch_size", "32", "--port", "5800", "--database_url", "sqlite:///work_dir/video_search.db"]
+ENTRYPOINT ["gunicorn", \
+            "--workers", "1", \
+            "--threads", "4", \
+            "--timeout", "300", \
+            "--bind", "0.0.0.0:5800", \
+            "app:wsgi_app"]
