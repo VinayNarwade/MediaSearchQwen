@@ -10,3 +10,4 @@ __pycache__/
 checkpoints/
 node_modules/
 new_dir/
+*.tar

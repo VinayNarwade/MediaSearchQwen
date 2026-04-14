@@ -29,7 +29,7 @@ index_payload = {
 
     ],
     "isVideo": True,
-    "dbName": "mem_test3"
+    "dbName": "mem_test_check"
 }
 
 """index_payload = {
