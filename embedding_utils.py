@@ -12,7 +12,7 @@ import torchaudio
 from PIL import Image
 from transformers import AutoProcessor, AutoModel
 
-from src.models.qwen3_vl_embedding import Qwen3VLEmbedder
+from src.models.embedding import Qwen3VLEmbedder
 from vllm_infer import *
 import requests
 import base64
@@ -30,8 +30,9 @@ qwen3vl_model = None
 processor = None
 device = None
 NUM_FRAMES = 8
+text_model = None
 
-def get_embedding_model(model_path="./checkpoints/models--Qwen--Qwen3-VL-Embedding-8B/snapshots/a12d6118f720ceb6d95f7d1cad4e8aeccddd9340"):
+def get_embedding_model(model_path="./checkpoints/embedding_model/snapshots/a12d6118f720ceb6d95f7d1cad4e8aeccddd9340"):
     """
     Get the Model as a singleton
     
@@ -61,7 +62,7 @@ def get_embedding_model(model_path="./checkpoints/models--Qwen--Qwen3-VL-Embeddi
             )
             processor = AutoProcessor.from_pretrained(model_path)
         except Exception as e:
-            print(f"Error loading Model: {e}")
+            print(f"Error loading Model")
             qwen3vl_model = None
             device = None
             processor = None
@@ -70,7 +71,8 @@ def get_embedding_model(model_path="./checkpoints/models--Qwen--Qwen3-VL-Embeddi
 
 def get_audio_text_model(download_root="checkpoints/cache_dir/whisper"):
     global text_model
-    text_model = whisper.load(whisper.load_model("medium", download_root=download_root))
+    if text_model is None:
+        text_model = whisper.load_model("medium", download_root=download_root)
     return text_model
 
 def extract_frames(video_path: str, num_frames: int = 8) -> List[Image.Image]:
@@ -148,13 +150,13 @@ def prepare_vllm_inputs_worker(video_path, tokenizer, instruction: str = "Repres
         return_video_kwargs=True,
         
     )
-    print("processed vision info")
+   # print("processed vision info")
     multi_modal_data = {}
     if video_inputs:
         videos, video_metadata = zip(*video_inputs)
         multi_modal_data["video"] = [(v, m) for v, m in zip(list(videos), list(video_metadata))]
-        print("len of videos:", len(videos))
-        print("videos[0] shape:", videos[0].shape)
+        # print("len of videos:", len(videos))
+        #print("videos[0] shape:", videos[0].shape)
 
     # Explicitly free the conversation dict and PIL image references now that
     # process_vision_info has already converted them to tensors.
@@ -202,7 +204,9 @@ def process_videos_batch(video_paths, llm, batch_size: int = 8):
         # released when the context manager exits before inference starts.
         t_prep_start = time.perf_counter()
         prep_results = []
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        # limit workers to the batch size to avoid over-subscribing CPUs
+        max_workers = min(4, max(1, len(batch_video_paths)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(prepare_vllm_inputs_worker, path, tokenizer) for path in batch_video_paths]
             for future in futures:
                 prep_results.append(future.result())
@@ -227,7 +231,7 @@ def process_videos_batch(video_paths, llm, batch_size: int = 8):
         del prep_results
         gc.collect()
 
-        # GPU Inference
+        # GPU / vLLM Inference
         if batch_prompts:
             t_inf_start = time.perf_counter()
             outputs = llm.embed(batch_prompts, use_tqdm=False)
@@ -241,10 +245,15 @@ def process_videos_batch(video_paths, llm, batch_size: int = 8):
                 vllm_emb = F.normalize(vllm_emb, p=2, dim=-1)
                 embeddings.append(vllm_emb)
 
-            print(f"  ✓ Prep: {(t_prep_end - t_prep_start):.2f}s | Inference: {inf_ms:.2f}ms")
+            # print(f"  ✓ Prep: {(t_prep_end - t_prep_start):.2f}s | Inference: {inf_ms:.2f}ms")
 
             # Explicitly drop outputs so vLLM's internal result objects are freed
             del outputs
+            # flush vLLM caches between batches to free GPU/host memory
+            try:
+                flush_vllm_caches()
+            except Exception:
+                pass
 
         # --- CRITICAL: Memory Management ---
         # Drop batch_prompts which hold large multi_modal_data pixel tensors
@@ -281,16 +290,16 @@ def get_video_embedding(
 ) -> Optional[torch.Tensor]:
 
     model, processor, device = get_embedding_model()
-    print("len of input: ", len(video_frames_list))
+    #print("len of input: ", len(video_frames_list))
     try:
         embeddings = process_videos_batch(video_frames_list, model, len(video_frames_list))
-        print("len of embeddings: ", len(embeddings))
+        #print("len of embeddings: ", len(embeddings))
         return embeddings
 
     except Exception as e:
-        print(f"Error generating video embedding: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error generating video embedding")
+        # import traceback
+        # traceback.print_exc()
         return None
 
 
@@ -308,9 +317,9 @@ def flush_vllm_caches():
     try:
         model.reset_mm_cache()
         model.reset_prefix_cache()
-        print("vLLM MM and prefix caches flushed.")
+        # print("vLLM MM and prefix caches flushed.")
     except Exception as e:
-        print(f"Warning: could not reset vLLM caches: {e}")
+        print(f"Warning: could not reset vLLM caches")
 
     gc.collect()
     gc.collect()
@@ -321,9 +330,9 @@ def flush_vllm_caches():
     try:
         import ctypes
         ctypes.CDLL("libc.so.6").malloc_trim(0)
-        print("malloc_trim called: freed heap pages returned to OS.")
+        # print("malloc_trim called: freed heap pages returned to OS.")
     except Exception as e:
-        print(f"Warning: malloc_trim failed: {e}")
+        print(f"Warning: malloc_trim failed")
 
 def get_text_embedding(
     text_query: str,
@@ -337,10 +346,10 @@ def get_text_embedding(
             llm_input,
             use_tqdm=False,
         )
-        print("len of outputs: ", len(outputs))
-        raw_emb = outputs[0].outputs.embedding         
-        print("len of raw_emb: ", len(raw_emb))
-        print("type of raw_emb[0]: ", type(raw_emb[0]))
+        #print("len of outputs: ", len(outputs))
+        raw_emb = outputs[0].outputs.embedding
+        #print("len of raw_emb: ", len(raw_emb))
+        #print("type of raw_emb[0]: ", type(raw_emb[0]))
         vllm_emb_last = torch.tensor(raw_emb, dtype=torch.float32).unsqueeze(0).cpu()   # (1, D)
         # normalize vllm_emb_last
         vllm_emb_last = F.normalize(vllm_emb_last, p=2, dim=-1)
@@ -380,10 +389,10 @@ def get_text_embedding_batch(
         for prep_res in prep_results:
             if prep_res:
                 input_data = {"prompt": prep_res["prompt"]}
-                if prep_res["multi_modal_data"]:
-                    input_data["multi_modal_data"] = prep_res["multi_modal_data"]
-                if prep_res["mm_processor_kwargs"]:
-                    input_data["mm_processor_kwargs"] = prep_res["mm_processor_kwargs"]
+                # if prep_res["multi_modal_data"]:
+                #     input_data["multi_modal_data"] = prep_res["multi_modal_data"]
+                # if prep_res["mm_processor_kwargs"]:
+                #     input_data["mm_processor_kwargs"] = prep_res["mm_processor_kwargs"]
                 batch_prompts.append(input_data)
 
         del prep_results
@@ -416,7 +425,6 @@ def get_text_embedding_batch(
 
 
 def get_image_embedding(
-    image: Union[str, Image.Image],
     img_path: str,
     text: str = "",
     instruction: str = "Represent the given input."
@@ -484,9 +492,9 @@ def get_image_embedding(
         return vllm_emb_last.cpu()
     
     except Exception as e:
-        print(f"Error generating image embedding: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error generating image embedding")
+        # import traceback
+        # traceback.print_exc()
         return None
 from transformers import AutoProcessor, AutoModel, BitsAndBytesConfig
 
@@ -505,7 +513,7 @@ def get_reranker_model():
 
         return reranking_model, reranking_processor, device
     except Exception as e:
-        print(f"Error loading reranker model: {e}")
+        print(f"Error loading reranker model")
         return None, None, None
 
 
@@ -543,9 +551,9 @@ def rerank_videos_by_text(
         print("Time taken for reranking:", t2 - t1)
         return probs[0].cpu().tolist()
     except Exception as e:
-        print(f"Error during reranking: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error during reranking")
+        # import traceback
+        # traceback.print_exc()
         return None
 
 

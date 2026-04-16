@@ -339,6 +339,8 @@ prevAudioSourceIds = None
 def imagesearch_api(image_path, text, threshold, startIndex, limit, dbName, sourceIds=None):
     global prevImageQuery, prevImageDbName, prevImageSourceIds
     image_path = os.path.join(config.WORKING_DIR, image_path)
+    # print("Image search API called with image_path:", image_path)
+    # print("Text query for image search:", text)
     start_time = time.time()
     filename = image_path.split("/")[-1]
     if startIndex < 1:

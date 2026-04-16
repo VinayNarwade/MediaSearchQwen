@@ -93,7 +93,8 @@ RUN pip install --no-cache-dir \
         "pandas==2.3.3" \
         "av==16.0.1" \
         "triton==3.5.1" \
-        "gunicorn==23.0.0"
+        "gunicorn==23.0.0" \
+        "vllm==0.14.0"
 
 # ── git-based packages ────────────────────────────────────────────────────────
 RUN pip install --no-cache-dir \
@@ -101,7 +102,7 @@ RUN pip install --no-cache-dir \
         "pytorchvideo @ git+https://github.com/facebookresearch/pytorchvideo.git"
 
 # ── flash-attn (must come after torch, no build isolation) ────────────────────
-RUN pip install --no-cache-dir flash-attn --no-build-isolation
+# RUN pip install --no-cache-dir flash-attn --no-build-isolation
 
 
 # ─── Stage 2: Compile – produce .pyc bytecode only ──────────────────────────
@@ -128,6 +129,7 @@ COPY app.py \
      embedding_utils.py \
      generate_key.py \
      setup_db.py \
+     vllm_infer.py \
      ./
 
 COPY utils/ ./utils/
@@ -169,7 +171,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 RUN apt update && \
-    apt install -y git wget ffmpeg libsm6 libxext6 dmidecode sudo 
+    apt install -y git wget ffmpeg libsm6 libxext6 dmidecode sudo gcc g++ make python3.12-dev
 
 # Copy the venv from builder
 COPY --from=builder /app/.venv /app/.venv
@@ -186,6 +188,7 @@ COPY --from=compiler /build/generate_key.pyc     ./generate_key.pyc
 COPY --from=compiler /build/setup_db.pyc         ./setup_db.pyc
 COPY --from=compiler /build/utils/               ./utils/
 COPY --from=compiler /build/src/                 ./src/
+COPY --from=compiler /build/vllm_infer.pyc       ./vllm_infer.pyc
 
 # Runtime volume for working directory (models, database files, etc.)
 VOLUME ["/app/work_dir"]
@@ -214,9 +217,4 @@ ENV BATCH_SIZE="4"
 ENV PORT="5800"
 ENV DATABASE_URL="sqlite:////work_dir/video_search.db"
 
-ENTRYPOINT ["gunicorn", \
-            "--workers", "1", \
-            "--threads", "4", \
-            "--timeout", "300", \
-            "--bind", "0.0.0.0:5800", \
-            "app:wsgi_app"]
+ENTRYPOINT ["/bin/bash", "-c", "source /app/.venv/bin/activate && exec gunicorn --workers 1 --threads 4 --timeout 300 --bind 0.0.0.0:5800 app:wsgi_app"]

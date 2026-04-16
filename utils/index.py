@@ -22,7 +22,7 @@ config = get_config()
 
 prevProcessedVideo = None
 vidReader = None
-text_model = None
+
 
 def find_scenes_from_images(image_folder: str, image_pattern: str, fps: float, threshold: float = 27.0):
     image_sequence_path = os.path.join(image_folder, image_pattern)
@@ -243,7 +243,9 @@ def detect_scenes(video_path, source_id, threshold, is_video=True, video_fps=30,
 
 def sample_frames(video_path, source_id, start_sec, end_sec, num_frames, fps, is_video=True):
     global prevProcessedVideo, vidReader
+   # print(source_id, prevProcessedVideo, vidReader)
     if is_video and prevProcessedVideo != source_id:
+       # print("Loading new video:", video_path)
         # vidReader = VideoReader(video_path, ctx=cpu(0), num_threads=1)
         vidReader = VideoReader(video_path, ctx=cpu(0))
         prevProcessedVideo = source_id 
@@ -283,7 +285,7 @@ def sample_frames(video_path, source_id, start_sec, end_sec, num_frames, fps, is
             resized_frame = Image.fromarray(np_frame) #.resize((new_width, new_height), Image.Resampling.LANCZOS)
             resized_frames.append(resized_frame)
         # print("Number of resized frames:", len(resized_frames), "shape:", resized_frames[0].size if resized_frames else "N/A")
-        del vidReader
+        # del vidReader
         return resized_frames
     else:
         if not os.path.isdir(video_path):
@@ -703,7 +705,7 @@ def index_audio_and_text(video_path, source_id, is_video, db_name, video_fps=30)
     debug_transcript_path = os.path.join(debug_dir, f"{video_name}_transcripts.json")
     with open(debug_transcript_path, 'w') as f:
         json.dump({f"{video_name}": aud_trans_debug}, f, indent=4)
-    del text_model
+    # del text_model
     shutil.rmtree(temp_dir, ignore_errors=True)
     return
 from embedding_utils import generate_video_from_frames

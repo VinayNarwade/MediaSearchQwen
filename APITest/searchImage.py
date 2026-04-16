@@ -8,12 +8,12 @@ BASE_URL = f"http://127.0.0.1:{port_num}"
 
 search_url = f"{BASE_URL}/imagesearch"
 search_payload = {
-    "image_path": "192.jpg",
-    "text": "near industrial machine",
+    "image_path": "victor.png",
+    "text": "near washing machine",
     "sortBy": "relevance",
     "startIndex": 1,
     "limit": 10,
-    "dbName": "vllm",
+   # "dbName": "vllm3",
     #"sourceIds": ["cos2"]
 }
 search_resp = requests.post(search_url, json=search_payload)
