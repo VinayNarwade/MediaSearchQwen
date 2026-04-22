@@ -7,11 +7,11 @@ license server's /api/license/generate endpoint.
 
 Usage:
     python generate_license_key.py \
-        --server  https://your-project.vercel.app \
-        --admin-secret  <ADMIN_SECRET> \
-        --customer-id   acme-corp \
-        --expiry        2027-01-01 \
-        --credits       1000
+        --server https://licenseserver-lime.vercel.app \
+        --admin-secret  5b07104304a4ed8b90628880ecadda1c \
+        --customer-id   gyrus-self \
+        --expiry        2029-01-01 \
+        --credits       10000
 
 The printed license key should be given to the customer so they can set:
     LICENSE_KEY=<token>
