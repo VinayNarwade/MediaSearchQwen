@@ -8,11 +8,11 @@ BASE_URL = f"http://127.0.0.1:{port_num}"
 index_url = f"{BASE_URL}/index-videos"
 index_payload = {
     "data": [
-       {"filepath": "meridian.mp4", "sourceId": "mer_new2", "fps": 30, "useAudio": True},
-      # {"filepath": "tearsofsteel.mp4", "sourceId": "tos", "fps": 30, "useAudio": False},
-      # {"filepath": "CosmosLaundromat.mp4", "sourceId": "cos", "fps": 30, "useAudio": True},
-        #{"filepath": "Spring_-_Blender_Open_Movie_WhWc3b3KhnY.mp4", "sourceId": "sprng", "fps": 30, "useAudio": False},
-        #{"filepath": "Sprite_Fright_-_Blender_Open_Movie__cMxraX_5RE.mp4", "sourceId": "sprite8", "fps": 30, "useAudio": False},
+    	{"filepath": "uploads/CosmosLaundromat.mp4", "sourceId": "cos_def", "fps": 30, "useAudio": True},
+        {"filepath": "uploads/meridian.mp4", "sourceId": "mer_def", "fps": 30, "useAudio": True},
+        {"filepath": "uploads/tearsofsteel.mp4", "sourceId": "tos_def", "fps": 30, "useAudio": True},
+        #{"filepath": "Spring_-_Blender_Open_Movie_WhWc3b3KhnY.mp4", "sourceId": "sprng", "fps": 30, "useAudio": True},
+        #{"filepath": "Sprite_Fright_-_Blender_Open_Movie__cMxraX_5RE.mp4", "sourceId": "sprite8", "fps": 30, "useAudio": True},
         #{"filepath": "WING_IT_-_Blender_Open_Movie_u9lj-c29dxI.mp4", "sourceId": "wing8", "fps": 30, "useAudio": False},
         # {"filepath": "meridian.mp4", "sourceId": "mer9", "fps": 30, "useAudio": False},
         # {"filepath": "tearsofsteel.mp4", "sourceId": "tos9", "fps": 30, "useAudio": False},
@@ -29,7 +29,7 @@ index_payload = {
 
     ],
     "isVideo": True,
-    "dbName": "memory_4"
+    "dbName": "_default_db"
 }
 
 """index_payload = {

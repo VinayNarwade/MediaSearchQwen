@@ -6,9 +6,11 @@ __pycache__/
 *.pyc
 *.pkl
 .DS_Store
-.venv/
-checkpoints/
 node_modules/
-new_dir/
-*.tar
-work_dir_old/
+mediasearch/node_modules/
+dist/
+build/
+.cache/
+*.exe
+.env
+media/
