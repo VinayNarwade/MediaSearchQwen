@@ -3,14 +3,20 @@ import json
 
 
 port_num = 5800
-BASE_URL = f"http://127.0.0.1:{port_num}"
+BASE_URL = f"http://3.95.216.196:{port_num}"
+
 
 index_url = f"{BASE_URL}/index-videos"
 index_payload = {
     "data": [
-    	{"filepath": "uploads/CosmosLaundromat.mp4", "sourceId": "cos_def", "fps": 30, "useAudio": True},
-        {"filepath": "uploads/meridian.mp4", "sourceId": "mer_def", "fps": 30, "useAudio": True},
-        {"filepath": "uploads/tearsofsteel.mp4", "sourceId": "tos_def", "fps": 30, "useAudio": True},
+    	#{"filepath": "uploads/king.mp4", "sourceId": "test01", "fps": 30, "useAudio": True}
+        #{"filepath": "uploads/1.mp4", "sourceId": "cos", "fps": 30, "useAudio": True}, #CosmosLaundromat
+        #{"filepath": "uploads/2.mp4", "sourceId": "tos", "fps": 30, "useAudio": True}, #tos
+        {"filepath": "uploads/1.mp4", "sourceId": "mer", "fps": 30, "useAudio": True},
+        {"filepath": "uploads/Spring.mp4", "sourceId": "spring", "fps": 30, "useAudio": True},
+        {"filepath": "uploads/CosmosLaundromat.mp4", "sourceId": "sprite", "fps": 30, "useAudio": True},
+        # {"filepath": "uploads/7.mp4", "sourceId": "wing", "fps": 30, "useAudio": True},
+        # {"filepath": "uploads/tearsofsteel.mp4", "sourceId": "tos_def", "fps": 30, "useAudio": True},
         #{"filepath": "Spring_-_Blender_Open_Movie_WhWc3b3KhnY.mp4", "sourceId": "sprng", "fps": 30, "useAudio": True},
         #{"filepath": "Sprite_Fright_-_Blender_Open_Movie__cMxraX_5RE.mp4", "sourceId": "sprite8", "fps": 30, "useAudio": True},
         #{"filepath": "WING_IT_-_Blender_Open_Movie_u9lj-c29dxI.mp4", "sourceId": "wing8", "fps": 30, "useAudio": False},
@@ -29,7 +35,7 @@ index_payload = {
 
     ],
     "isVideo": True,
-    "dbName": "_default_db"
+    "dbName": "29th10"
 }
 
 """index_payload = {

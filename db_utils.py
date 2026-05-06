@@ -45,6 +45,19 @@ class VideoMetadata(Base):
         {'mysql_engine': 'InnoDB'}
     )
 
+class BulkSearch(Base):
+    __tablename__ = 'bulk'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    keywords = Column(Text, nullable=False)  # Keywords for the search
+    query = Column(Text, nullable=False)  # The search query
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    __table_args__ = (
+        {'mysql_engine': 'InnoDB'}
+    )
+
 class DatabaseManager:
     def __init__(self, database_url=None):
         self.database_url = database_url or config.DATABASE_URL
@@ -473,6 +486,177 @@ class DatabaseManager:
             })
             
         return metadata_dict
+
+    def insert_bulk_search(self, keywords, query):
+        """
+        Insert a new bulk search record into the bulk table
+        Args:
+            keywords: Keywords for the search (can be comma-separated or JSON)
+            query: The search query string
+        Returns:
+            The ID of the inserted record, or None if failed
+        """
+        session = self.get_session()
+        try:
+            bulk_record = BulkSearch(
+                keywords=keywords,
+                query=query
+            )
+            session.add(bulk_record)
+            session.commit()
+            record_id = bulk_record.id
+            print(f"Successfully inserted bulk search record with ID: {record_id}")
+            return record_id
+        except Exception as e:
+            session.rollback()
+            print(f"Error inserting bulk search record: {str(e)}")
+            return None
+        finally:
+            session.close()
+
+    def insert_bulk_search_batch(self, bulk_searches):
+        """
+        Insert multiple bulk search records at once
+        Args:
+            bulk_searches: List of dictionaries with 'keywords' and 'query' keys
+        Returns:
+            List of inserted record IDs
+        """
+        session = self.get_session()
+        try:
+            bulk_records = []
+            for search in bulk_searches:
+                bulk_record = BulkSearch(
+                    keywords=search.get('keywords'),
+                    query=search.get('query')
+                )
+                bulk_records.append(bulk_record)
+            
+            session.add_all(bulk_records)
+            session.commit()
+            record_ids = [record.id for record in bulk_records]
+            print(f"Successfully inserted {len(bulk_records)} bulk search records")
+            return record_ids
+        except Exception as e:
+            session.rollback()
+            print(f"Error inserting bulk search batch: {str(e)}")
+            return []
+        finally:
+            session.close()
+
+    def get_bulk_searches(self, limit=None, offset=0):
+        """
+        Retrieve bulk search records
+        Args:
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+        Returns:
+            List of bulk search dictionaries
+        """
+        session = self.get_session()
+        try:
+            query = session.query(BulkSearch).order_by(BulkSearch.created_at.desc())
+            if limit:
+                query = query.limit(limit).offset(offset)
+            
+            records = query.all()
+            results = []
+            for record in records:
+                results.append({
+                    'id': record.id,
+                    'keywords': record.keywords,
+                    'query': record.query,
+                    'created_at': record.created_at.isoformat() if record.created_at else None,
+                    'updated_at': record.updated_at.isoformat() if record.updated_at else None
+                })
+            return results
+        except Exception as e:
+            print(f"Error retrieving bulk searches: {str(e)}")
+            return []
+        finally:
+            session.close()
+
+    def get_bulk_search_by_id(self, search_id):
+        """
+        Retrieve a specific bulk search record by ID
+        Args:
+            search_id: The ID of the bulk search record
+        Returns:
+            Bulk search dictionary or None if not found
+        """
+        session = self.get_session()
+        try:
+            record = session.query(BulkSearch).filter_by(id=search_id).first()
+            if record:
+                return {
+                    'id': record.id,
+                    'keywords': record.keywords,
+                    'query': record.query,
+                    'created_at': record.created_at.isoformat() if record.created_at else None,
+                    'updated_at': record.updated_at.isoformat() if record.updated_at else None
+                }
+            return None
+        except Exception as e:
+            print(f"Error retrieving bulk search by ID: {str(e)}")
+            return None
+        finally:
+            session.close()
+
+    def delete_bulk_search(self, search_id):
+        """
+        Delete a bulk search record by ID
+        Args:
+            search_id: The ID of the bulk search record to delete
+        Returns:
+            True if deleted, False otherwise
+        """
+        session = self.get_session()
+        try:
+            record = session.query(BulkSearch).filter_by(id=search_id).first()
+            if record:
+                session.delete(record)
+                session.commit()
+                print(f"Successfully deleted bulk search record with ID: {search_id}")
+                return True
+            print(f"Bulk search record with ID {search_id} not found")
+            return False
+        except Exception as e:
+            session.rollback()
+            print(f"Error deleting bulk search record: {str(e)}")
+            return False
+        finally:
+            session.close()
+
+    def update_bulk_search(self, search_id, keywords=None, query=None):
+        """
+        Update a bulk search record
+        Args:
+            search_id: The ID of the record to update
+            keywords: New keywords (optional)
+            query: New query (optional)
+        Returns:
+            True if updated, False otherwise
+        """
+        session = self.get_session()
+        try:
+            record = session.query(BulkSearch).filter_by(id=search_id).first()
+            if record:
+                if keywords is not None:
+                    record.keywords = keywords
+                if query is not None:
+                    record.query = query
+                record.updated_at = datetime.utcnow()
+                session.commit()
+                print(f"Successfully updated bulk search record with ID: {search_id}")
+                return True
+            print(f"Bulk search record with ID {search_id} not found")
+            return False
+        except Exception as e:
+            session.rollback()
+            print(f"Error updating bulk search record: {str(e)}")
+            return False
+        finally:
+            session.close()
 
 # Global database manager instance
 db_manager = None

@@ -3,17 +3,21 @@ import json
 
 
 port_num = 5800
-BASE_URL = f"http://127.0.0.1:{port_num}"
+BASE_URL = f"http://52.90.211.56:{port_num}"
+
+#generate random string
+import random, string; 
+query_random = random.choice(["cars", "cats", "dogs", "meridian", "people", "football", "cosmos", "washing machines", "red hair", "smoking"])
 
 search_url = f"{BASE_URL}/textsearch"
 search_payload = {
-    "query": "washing machines",
+    "query": query_random,
     # "sortBy": "relevance",
     "startIndex": 1,
     "limit": 10,
-    "dbName": "_default_db",
+    "dbName": "29th07",
     # "sourceIds" : ["mer_new2"],
-    #"indexType": "text"
+    # "indexType": "text"
 }
 
 search_resp = requests.post(search_url, json=search_payload)

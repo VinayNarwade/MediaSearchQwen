@@ -2,7 +2,7 @@ import os
 import warnings
 import subprocess
 
-from db_utils import get_db_manager
+from db_utils import *
 # ── Silence everything before any heavy imports ──────────────────────────────
 warnings.filterwarnings("ignore")
 
@@ -446,6 +446,17 @@ def get_transcripts_rest():
     return jsonify({"transcripts": transcripts}), status_code
 
 
+@app.route('/insertquerry', methods=['POST'])
+def insert_querry():
+    data = request.get_json()
+    keywords = data.get("keywords", "")
+    query = data.get("query", "")
+    print(f"Received bulk search query with keywords: {keywords} and query: {query}")
+
+    # Here you would typically process the keywords and query, e.g., save to a database
+    # For demonstration, we'll just return them in the response
+    return jsonify({"message": "Query received", "keywords": keywords, "query": query}), 200
+
 @app.route('/bulk-search', methods=['POST'])
 def bulk_search_rest():
     data = request.get_json()
@@ -465,6 +476,11 @@ def bulk_search_rest():
         else:
             search_results.append(res)
     return jsonify({"searchResults": search_results}), 200
+
+@app.route('/get-bulk-queries', methods=['GET'])
+def get_bulk_queries():
+    # Placeholder implementation - replace with actual logic to fetch bulk queries
+    return jsonify({"queries": []}), 200
 
 os.environ['VLLM_WORKER_MULTIPROC_METHOD'] = 'spawn'
 from embedding_utils import get_embedding_model

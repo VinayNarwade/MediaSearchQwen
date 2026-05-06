@@ -1,0 +1,45 @@
+  
+mkdir ~/s3_mount
+mount | grep s3_mount
+sudo sed -i 's/#user_allow_other/user_allow_other/g' /etc/fuse.conf
+mkdir ~/s3_mount
+mount-s3 --allow-other gyrusdocker ~/s3_mount
+docker run --gpus all --privileged --add-host=host.docker.internal:host-gateway -e BATCH_SIZE=16 -p 5800:5800 -v ~/s3_mount:/work_dir embedding-search-cloud-v1.2:latest DATABASE_URL=videodata.c49i8wgqgui0.us-east-1.rds.amazonaws.com/video_metadata LICENSE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlci1hY2Nlc3NvIiwiZXhwIjoxNzgwNzA0MDAwLCJtb250aGx5X2NyZWRpdHMiOjEwMDAuMCwiaWF0IjoxNzc1NzEzNzQ1fQ.CWqIvbaDiy0xzUi0kO6hXSeHVL4ZK4WgqP5DnCgUUKw"
+ 
+sudo apt install postgresql-client-common
+sudo apt install -y postgresql-client
+psql -h video-metadata-db.c49i8wgqgui0.us-east-1.rds.amazonaws.com -U postgres -p 5432 -d postgres
+
+
+https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb
+sudo apt-get install -y ./mount-s3.deb
+aws configure
+sudo sed -i 's/#user_allow_other/user_allow_other/g' /etc/fuse.conf
+mkdir -p ~/s3_mount2
+mount-s3 --allow-other gyrusdocker ~/s3_mount2 --allow-overwrite --allow-delete
+
+
+****** S3FS **************
+
+sudo mkdir s3_mount
+
+ sudo s3fs gyrusdocker s3_mount/ \
+  -o passwd_file=~/.passwd-s3fs \
+  -o allow_other \
+  -o umask=000 \
+  -o url=https://s3.amazonaws.com \
+  -o use_path_request_style \
+  -o stat_cache_expire=0 \
+  -o enable_noobj_cache \
+  -o multipart_size=128 \
+  -o parallel_count=10 \
+  -o retries=5
+
+docker run --shm-size=500m --gpus all --privileged  --add-host=host.docker.internal:host-gateway  -e BATCH_SIZE=4  -p 5800:5800  -v ~/s3_mount:/work_dir  -e DATABASE_URL=postgresql://postgres:postgres@videodata.c49i8wgqgui0.us-east-1.rds.amazonaws.com/video_metadata   
+-e LICENSE_KEY="yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlci1hY2Nlc3NvIiwiZXhwIjoxNzgwNzA0MDAwLCJtb250aGx5X2NyZWRpdHMiOjEwMDAuMCwiaWF0IjoxNzc1NzEzNzQ1fQ.CWqIvbaDiy0xzUi0kO6hXSeHVL4ZK4WgqP5DnCgUUKw"  embedding-search-sa-v1
+
+
+docker run --shm-size=500m --gpus all --privileged --add-host=host.docker.internal:host-gateway -e BATCH_SIZE=4 -p 5800:5800 -v ~/
+s3_mount:/work_dir -e DATABASE_URL=postgresql://postgres:postgres@videodata.c49i8wgqgui0.us-east-1.rds.amazonaws.com/video_metadata -e LICENSE_KEY="eyJhbGci
+OiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdXBlci1hY2Nlc3NvIiwiZXhwIjoxNzgwNzA0MDAwLCJtb250aGx5X2NyZWRpdHMiOjEwMDAuMCwiaWF0IjoxNzc1NzEzNzQ1fQ.CWqIvbaDiy0xzUi0
+kO6hXSeHVL4ZK4WgqP5DnCgUUKw" embedding-search-sa-v1

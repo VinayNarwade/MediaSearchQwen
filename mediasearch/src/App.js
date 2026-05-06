@@ -6,6 +6,7 @@ import UploadPage from './UploadPage';
 import SearchPage from './SearchPage';
 import LibraryPage from './LibraryPage';
 import LicenseManager from './LicenseManager';
+import BulkSearch from './BulkSearch';
 
 const modernStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -282,6 +283,7 @@ const Sidebar = ({ activeTab, setActiveTab, licenseStatus, setShowSettings, isOp
     { name: 'Dashboard', icon: 'grid-1x2-fill' },
     { name: 'Upload & Index', icon: 'cloud-arrow-up-fill' },
     { name: 'Search Media', icon: 'search' },
+    {name : 'Bulk Search', icon: 'search-heart-fill' },
     { name: 'Library', icon: 'collection-play-fill' },
     { name: 'LicenseManager', icon: 'shield-lock-fill', label: 'License Manager' }
   ];
@@ -623,6 +625,7 @@ export default function App() {
           {activeTab === 'Dashboard' && <DashboardView statusData={statusData} setActiveTab={setActiveTab} />}
           {activeTab === 'Upload & Index' && <div className="fade-in"><UploadPage backendConfig={backendConfig} mappings={mappings} setMappings={(newM) => saveSettings(backendConfig, newM)} setShowSettings={setShowSettings} /></div>}
           {activeTab === 'Search Media' && <div className="fade-in"><SearchPage backendConfig={backendConfig} setShowSettings={setShowSettings} /></div>}
+          {activeTab === 'Bulk Search' && <div className="fade-in"><BulkSearch backendConfig={backendConfig} setShowSettings={setShowSettings} /></div>}
           {activeTab === 'Library' && <div className="fade-in"><LibraryPage backendConfig={backendConfig} setShowSettings={setShowSettings} /></div>}
           {activeTab === 'LicenseManager' && <div className="fade-in"><LicenseManager onActivationSuccess={checkLicense} /></div>}
         </main>

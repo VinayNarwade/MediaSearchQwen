@@ -3,7 +3,7 @@ import json
 
 
 port_num = 5800
-BASE_URL = f"http://127.0.0.1:{port_num}"
+BASE_URL = f"http://44.222.252.177:{port_num}"
 
 # 1. Licence Requirement
 licence_url = f"{BASE_URL}/licence-requirement"

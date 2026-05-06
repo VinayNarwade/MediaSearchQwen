@@ -351,9 +351,16 @@ export default function SearchPage({ backendConfig, setShowSettings }) {
       const endpoint = type === 'image' ? '/imagesearch' : '/audiosearch';
       const payloadKey = type === 'image' ? 'image_path' : 'audio_path';
 
+      const payload = {
+        [payloadKey]: savedPath,
+        startIndex: 1,
+        limit: PAGE_LIMIT,
+        dbName: filters.dbName === '*' ? undefined : filters.dbName
+      };
+
       const res = await fetch(`${apiBase}${endpoint}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [payloadKey]: savedPath, startIndex: 1, limit: PAGE_LIMIT })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -557,7 +564,7 @@ export default function SearchPage({ backendConfig, setShowSettings }) {
                     </select> */}
 
                     <select className="form-select modern-input" value={filters.index_type} onChange={e => setFilters({ ...filters, index_type: e.target.value })}>
-                      <option value="">Select Index Type (default: video)</option>
+                      <option value="">Select Index Type (DF: video)</option>
                       <option value="text">Text Index</option>
                       <option value="video">Video Index</option>
                     </select>
@@ -603,6 +610,13 @@ export default function SearchPage({ backendConfig, setShowSettings }) {
                         <i className="bi bi-image fs-1 text-muted"></i>
                       </div>
                     )}
+                    <div className="w-100 mb-3">
+                      <label className="form-label small fw-bold text-uppercase ms-1" style={{ color: 'var(--text-muted)' }}>Database Filter</label>
+                      <select className="form-select modern-input" value={filters.dbName} onChange={e => setFilters({ ...filters, dbName: e.target.value })}>
+                        <option value="*">All Databases</option>
+                        {dbList.map(db => <option key={db} value={db}>{db}</option>)}
+                      </select>
+                    </div>
                     <button className="btn btn-gradient-primary w-100 rounded-pill py-2 shadow-sm d-flex justify-content-center align-items-center gap-2" onClick={() => handleMediaSearch('image')} disabled={!selectedImage}>
                       <i className="bi bi-magic fs-5"></i> Find Image Matches
                     </button>
